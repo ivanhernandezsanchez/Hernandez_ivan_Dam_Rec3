@@ -1,3 +1,16 @@
+
+/*
+=========================================
+AUTOR: Ivan Hernandez
+GRUPO: DAM2
+EXAMEN JDBC AWS RDS
+FECHA: 04/06/2026
+=========================================
+*/
+
+
+
+
 package examen.ivan.hernandez.beans;
 
 public class Incidente {

@@ -1,6 +1,20 @@
+/*
+=========================================
+AUTOR: Ivan Hernandez
+GRUPO: DAM2
+EXAMEN JDBC AWS RDS
+FECHA: 04/06/2026
+=========================================
+*/
+
+
+
+
 package examen.ivan.hernandez.dao;
 
 import examen.ivan.hernandez.beans.Incidente;
+import examen.ivan.hernandez.beans.InformeIncidente;
+import examen.ivan.hernandez.beans.Soc;
 import examen.ivan.hernandez.motores.MotorSQL;
 
 import java.sql.ResultSet;
@@ -32,6 +46,32 @@ public class IncidenteDAOImpl extends AbstractDAO<Incidente>{
     private static final String SQL_DELETE =
             "DELETE FROM incidente " +
                     "WHERE id = ?";
+
+
+    private static final String SQL_FIN_BY_SOC =
+            "SELECT * " +
+                    "FROM incidente " +
+                    "WHERE socid = ? " +
+                    "ORDER BY id ";
+
+    private static final String SQL_FIND_WITH_INFORME =
+            "SELECT incidente.*, informeincidente.id AS informeid, informeincidente.malwaredetectado, informeincidente.nivelseveridad, informeincidente.conclusion " +
+                    "FROM incidente " +
+                    "INNER JOIN informeincidente ON informeincidente.incidenteid = incidente.id " +
+                    "WHERE incidente.id = ?";
+
+
+    private static final String SQL_INCIDENTES_CRITICOS =
+            "SELECT incidente.*, " +
+                    "soc.nombre AS socnombre, soc.pais, soc.nivelseguridad, " +
+                    "informeincidente.id AS informeid, informeincidente.malwaredetectado, informeincidente.nivelseveridad, informeincidente.conclusion " +
+                    "FROM incidente " +
+                    "INNER JOIN soc ON soc.id = incidente.socid " +
+                    "INNER JOIN informeincidente ON informeincidente.incidenteid = incidente.id " +
+                    "WHERE informeincidente.malwaredetectado = true " +
+                    "AND informeincidente.nivelseveridad > 90 " +
+                    "AND soc.pais = 'España'";
+
 
 
 
@@ -135,6 +175,82 @@ public class IncidenteDAOImpl extends AbstractDAO<Incidente>{
         }
         return incidentes;
     }
+
+    public ArrayList<Incidente> findByIncidente(int id) {
+        ArrayList<Incidente> incidentes = new ArrayList<>();
+        try{
+            motorSQL.connect();
+            motorSQL.prepare(SQL_FIN_BY_SOC);
+            motorSQL.getPs().setInt(1,id);
+
+            ResultSet rs = motorSQL.executeQuery();
+            while (rs.next()) {
+                incidentes.add(mapIncidente(rs));
+            }
+        }catch (Exception e){
+            printError(e);
+        }finally {
+            motorSQL.close();
+        }
+        return incidentes;
+    }
+
+    public Incidente findWithInforme(int id) {
+        Incidente incidente = null;
+        try {
+            motorSQL.connect();
+            motorSQL.prepare(SQL_FIND_WITH_INFORME);
+            motorSQL.getPs().setInt(1, id);
+            ResultSet rs = motorSQL.executeQuery();
+            if (rs.next()) {
+                incidente = mapIncidente(rs);
+                InformeIncidente informeIncidente = new InformeIncidente();
+                informeIncidente.setId(rs.getInt("informeid"));
+                informeIncidente.setMalwareDetectado(rs.getBoolean("malwaredetectado"));
+                informeIncidente.setNivelSeveridad(rs.getInt("nivelseveridad"));
+                informeIncidente.setConclusion(rs.getString("conclusion"));
+                incidente.setInformeIncidente(informeIncidente);
+            }
+
+        }catch (Exception e) {
+            printError(e);
+        } finally {
+            motorSQL.close();
+        }
+        return  incidente;
+    }
+
+    public ArrayList<Incidente> findIncidentesCriticos() {
+        ArrayList<Incidente> incidentes = new ArrayList<>();
+        try {
+            motorSQL.connect();
+            motorSQL.prepare(SQL_INCIDENTES_CRITICOS);
+            ResultSet rs = motorSQL.executeQuery();
+            while (rs.next()) {
+                Incidente incidente = mapIncidente(rs);
+
+                Soc soc = new Soc();
+                soc.setNombre(rs.getString("socnombre"));
+                soc.setPais(rs.getString("pais"));
+                incidente.setSoc(soc);
+
+                InformeIncidente informeIncidente = new InformeIncidente();
+                informeIncidente.setId(rs.getInt("informeid"));
+                informeIncidente.setMalwareDetectado(rs.getBoolean("malwaredetectado"));
+                informeIncidente.setNivelSeveridad(rs.getInt("nivelseveridad"));
+                informeIncidente.setConclusion(rs.getString("conclusion"));
+                incidente.setInformeIncidente(informeIncidente);
+
+                incidentes.add(incidente);
+            }
+        } catch (Exception e) {
+            printError(e);
+        } finally {
+            motorSQL.close();
+        }
+        return incidentes;
+    }
+
 
     private Incidente mapIncidente(ResultSet rs) throws Exception {
         Incidente incidente = new Incidente();
